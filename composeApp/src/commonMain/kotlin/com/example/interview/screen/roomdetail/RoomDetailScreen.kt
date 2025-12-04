@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.interview.model.Comment
+import com.example.interview.model.SyncState
 import com.example.interview.viewmodel.send
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -60,7 +61,7 @@ fun RoomDetailScreen(
                 // Panorama Section
                 item {
                     PanoSection(
-                        hasPano = room.pano != null,
+                        hasPano = room.pano != null && room.pano.syncState != SyncState.DELETED,
                         onAddPano = {
                             // For simplicity, add dummy pano data
                             viewModel.send(RoomDetailViewModel.Action.AddPano(byteArrayOf(1, 2, 3)))

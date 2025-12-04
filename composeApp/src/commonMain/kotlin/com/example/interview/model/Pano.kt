@@ -2,7 +2,8 @@ package com.example.interview.model
 
 data class Pano(
     val id: String,
-    val imageData: ByteArray
+    val imageData: ByteArray,
+    val syncState: SyncState = SyncState.SYNCED
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

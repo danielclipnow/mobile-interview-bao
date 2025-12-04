@@ -1,5 +1,7 @@
 package com.example.interview.di
 
+import com.example.interview.analytics.Analytics
+import com.example.interview.analytics.ConsoleAnalytics
 import com.example.interview.api.ApiClient
 import com.example.interview.api.ApiClientImpl
 import com.example.interview.repository.ProjectRepository
@@ -20,8 +22,11 @@ val appModule = module {
     // API Client
     single<ApiClient> { ApiClientImpl() }
 
+    // Analytics
+    single<Analytics> { ConsoleAnalytics() }
+
     // Repository - single instance shared across the app
-    single { ProjectRepository(apiClient = get()) }
+    single { ProjectRepository(apiClient = get(), analytics = get()) }
 
     // ViewModels
     viewModel { parameters ->

@@ -97,6 +97,12 @@ class ProjectRepository(
                         "project_id" to project.id,
                         "room_id" to room.id
                     ))
+                    SyncState.DELETED -> analytics.trackEvent("entity_deleted", mapOf(
+                        "entity_type" to "pano",
+                        "id" to pano.id,
+                        "project_id" to project.id,
+                        "room_id" to room.id
+                    ))
                     SyncState.SYNCED -> { /* No tracking needed for synced entities */ }
                 }
             }
@@ -120,7 +126,7 @@ class ProjectRepository(
             }
         }
 
-        // Track deletions
+        // Track deletions (legacy support for deletedPanos/deletedPanoIds)
         project.deletedPanos.forEach { deletedPano ->
             analytics.trackEvent("entity_deleted", mapOf(
                 "entity_type" to "pano",
@@ -179,11 +185,18 @@ class ProjectRepository(
                     SyncState.SYNCED -> { /* Skip synced rooms */ }
                 }
 
-                // Upload pano if present and not synced
+                // Upload pano if present and new
                 room.pano?.let { pano ->
-                    if (pano.syncState == SyncState.NEW) {
-                        apiClient.createPano(projectId, room.id, pano)
-                        itemsSyncedCount++
+                    when (pano.syncState) {
+                        SyncState.NEW -> {
+                            apiClient.createPano(projectId, room.id, pano)
+                            itemsSyncedCount++
+                        }
+                        SyncState.DELETED -> {
+                            apiClient.deletePano(projectId, room.id, pano.id)
+                            itemsSyncedCount++
+                        }
+                        SyncState.MODIFIED, SyncState.SYNCED -> { /* Skip */ }
                     }
                 }
 
@@ -203,7 +216,7 @@ class ProjectRepository(
                 }
             }
 
-            // Delete panos
+            // Delete panos (legacy support for deletedPanos/deletedPanoIds)
             project.deletedPanos.forEach { deletedPano ->
                 apiClient.deletePano(projectId, deletedPano.roomId, deletedPano.panoId)
                 itemsSyncedCount++
@@ -242,7 +255,12 @@ class ProjectRepository(
 
     private fun markProjectAsSynced(project: Project): Project {
         val syncedRooms = project.rooms.map { room ->
-            val syncedPano = room.pano?.copy(syncState = SyncState.SYNCED)
+            // Remove panos that were successfully deleted (DELETED state)
+            val syncedPano = when {
+                room.pano?.syncState == SyncState.DELETED -> null
+                room.pano != null -> room.pano.copy(syncState = SyncState.SYNCED)
+                else -> null
+            }
             val syncedComments = room.comments.map { it.copy(syncState = SyncState.SYNCED) }
             room.copy(
                 syncState = SyncState.SYNCED,

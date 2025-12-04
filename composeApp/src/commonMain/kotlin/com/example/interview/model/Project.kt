@@ -49,24 +49,14 @@ data class Project(
     }
 
     fun copyByRemovingPanoFromRoom(roomId: String): Project {
-        val room = rooms.find { it.id == roomId }
-        val panoId = room?.pano?.id
-        val updatedDeletedPanos = if (panoId != null && !deletedPanos.any { it.panoId == panoId }) {
-            deletedPanos + DeletedPano(panoId = panoId, roomId = roomId)
-        } else {
-            deletedPanos
-        }
-        // Keep deletedPanoIds for backward compatibility, but prefer deletedPanos
-        val updatedDeletedPanoIds = if (panoId != null && !deletedPanoIds.contains(panoId)) {
-            deletedPanoIds + panoId
-        } else {
-            deletedPanoIds
-        }
         val updatedRooms = rooms.map { r ->
-            if (r.id == roomId) r.copy(pano = null)
-            else r
+            if (r.id == roomId && r.pano != null) {
+                r.copy(pano = r.pano.copy(syncState = SyncState.DELETED))
+            } else {
+                r
+            }
         }
-        return copy(rooms = updatedRooms, deletedPanoIds = updatedDeletedPanoIds, deletedPanos = updatedDeletedPanos)
+        return copy(rooms = updatedRooms)
     }
 
     fun copyByUpdatingCommentInRoom(roomId: String, commentId: String, text: String): Project {
